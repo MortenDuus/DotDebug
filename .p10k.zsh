@@ -1,0 +1,1 @@
+/Users/morten.duus/dotfiles/.p10k.zsh
