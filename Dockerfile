@@ -13,6 +13,15 @@ RUN apt-get update && apt-get install -y \
     dotnet-sdk-6.0 \
     zsh \
     git \
+    openssl \
+    speedtest-cli \
+    iftop \
+    strace \
+    tcpdump \
+    tcptraceroute \
+    util-linux \
+    vim \
+    nano \
     net-tools
 
 
@@ -33,10 +42,13 @@ RUN apt-get clean && \
     rm -rf /var/tmp/*
 RUN rm packages-microsoft-prod.deb
 
+RUN apt update -y && apt install -y nodejs npm
+RUN npm install -g artillery@latest
+
 # Setting User and Home
 USER root
 WORKDIR /root
-ENV HOSTNAME dotdebug
+ENV HOSTNAME=dotdebug
 
 
 RUN ln -s /root/.dotnet/dotnet /usr/local/bin
@@ -46,7 +58,9 @@ RUN ln -s /root/.dotnet/tools/dotnet-counters /usr/local/bin
 RUN apt-get install -y git zsh
 
 RUN curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh
-RUN git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ".oh-my-zsh/custom/themes/powerlevel10k"
+RUN git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+RUN git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
+#RUN git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ".oh-my-zsh/custom/themes/powerlevel10k"
 
 
 COPY zshrc .zshrc
