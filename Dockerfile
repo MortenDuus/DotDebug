@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     git \
     net-tools
 
+
 # dotnet 9
 RUN wget https://builds.dotnet.microsoft.com/dotnet/scripts/v1/dotnet-install.sh -O dotnet-install.sh
 RUN chmod +x dotnet-install.sh && \
@@ -25,23 +26,34 @@ RUN dotnet tool install -g dotnet-counters
 RUN dotnet tool install -g dotnet-dump
 RUN dotnet tool install -g dotnet-trace
 
+#clean up
+RUN apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /tmp/* && \
+    rm -rf /var/tmp/*
+RUN rm packages-microsoft-prod.deb
+
 # Setting User and Home
 USER root
 WORKDIR /root
 ENV HOSTNAME dotdebug
 
+
 RUN ln -s /root/.dotnet/dotnet /usr/local/bin
 RUN ln -s /root/.dotnet/tools/dotnet-counters /usr/local/bin
 
-# ZSH Themes
-RUN curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh
-COPY zshrc .zshrc
-COPY p10k.zsh .p10k.zsh
-COPY motd .motd
+#SETUP ZSH
+RUN apt-get install -y git zsh
 
-#setup powerlevel10k    
-RUN git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ~/powerlevel10k
-RUN echo 'source ~/powerlevel10k/powerlevel10k.zsh-theme' >>~/.zshrc
+RUN curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh
+RUN git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ".oh-my-zsh/custom/themes/powerlevel10k"
+
+
+COPY zshrc .zshrc
+COPY motd .motd
+COPY p10k.zsh .p10k.zsh
+
+
 
 # Running ZSH
 CMD ["zsh"]
