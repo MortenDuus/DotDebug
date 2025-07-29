@@ -1,2 +1,49 @@
-Welcome to DotnetDebug! 
-Version: 0.1
+🔍 Sidecar Debug Container - Pod Network & Process Debugging
+Version: 0.3
+══════════════════════════════════════════════════════════
+
+🛠️  Network Debugging Tools:
+   • tcpdump, nmap, mtr, iperf3, traceroute
+   • netcat, socat, telnet, dig, nslookup
+   • netstat, ss, lsof, arp
+
+🔧 Application Debugging:
+   • dotnet-counters, dotnet-dump, dotnet-trace
+   • strace, htop, ps, lsof
+   • Node.js with Artillery for performance testing
+
+📋 Quick Commands:
+   • debug-sidecar [host] [port]     - Full pod debug info
+   • debug-network [host] [port]     - Network connectivity tests
+   • envoy-stats                     - Istio proxy metrics (if available)
+   • envoy-clusters                  - Istio proxy clusters
+   • test-port [host] [port]         - Quick port connectivity test
+   • test-http [url]                 - HTTP endpoint test
+   • capture-traffic [host]          - Capture network packets
+   • trace-calls [pid]               - Trace system calls
+
+🔗 Useful Aliases:
+   • listen = netstat -tlnp          • ports = ss -tulpn
+   • conns = ss -tuln               • myip = hostname -i
+   • pstree = ps auxf              • netprocs = lsof -i
+   • dotnet-procs = .NET processes  • dotnet-ports = .NET connections
+   • tmp-files = shared volume files • listening = listening ports only
+
+🚀 .NET Debugging Functions:
+   • monitor-dotnet [app-name]       - Live performance monitoring
+   • dump-dotnet [app-name]          - Create memory dump to /tmp
+   • trace-dotnet [app-name] [secs]  - Execution tracing to /tmp
+
+💡 Sidecar Debugging Examples:
+   • debug-sidecar api-service 8080
+   • capture-traffic 10.244.1.5
+   • test-port my-service.default.svc.cluster.local 80
+   • dotnet-counters monitor -p $(pgrep dotnet)
+   • strace -p $(pgrep MyApp) -f -e network
+
+📊 Istio Service Mesh:
+   • Check for Envoy proxy on ports 15000-15090
+   • Access Envoy admin interface via localhost:15000
+   • Monitor proxy stats and cluster health
+
+══════════════════════════════════════════════════════════

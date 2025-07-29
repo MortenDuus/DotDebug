@@ -1,0 +1,38 @@
+# Patch to add debug sidecar to existing deployment
+# Usage: kubectl patch deployment <your-deployment> --patch-file debug-sidecar-patch.yaml
+
+spec:
+  template:
+    spec:
+      containers:
+        # Add this debug sidecar container to your existing deployment
+        - name: debug-sidecar
+          image: ghcr.io/mortenduus/dotdebug:latest
+          command: ["sleep", "infinity"]
+
+          # Mount diagnostics volume for persistent debug data
+          volumeMounts:
+            - name: diagnostics
+              mountPath: /tmp
+
+          # Network debugging capabilities
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+                - SYS_PTRACE
+                - NET_RAW
+
+          # Resource limits to prevent interference with main app
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+
+      # Add diagnostics volume to the pod
+      volumes:
+        - name: diagnostics
+          emptyDir: {}

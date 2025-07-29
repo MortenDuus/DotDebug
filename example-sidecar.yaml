@@ -1,0 +1,69 @@
+# Patch to add debug sidecar to existing deployment
+# Usage: kubectl patch deployment <your-deployment> --patch-file debug-sidecar-patch.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: your-deployment-name
+spec:
+  template:
+    spec:
+      containers:
+        # Add this debug sidecar container to your existing deployment
+        - name: debug-sidecar
+          image: ghcr.io/mortenduus/dotdebug:latest
+          command: ["sleep", "infinity"]
+
+          # Mount diagnostics volume for persistent debug data
+          volumeMounts:
+            - name: diagnostics
+              mountPath: /tmp
+
+          # Network debugging capabilities
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+                - SYS_PTRACE
+                - NET_RAW
+
+          # Resource limits to prevent interference with main app
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+
+      # Add diagnostics volume to the pod
+      volumes:
+        - name: diagnostics
+          emptyDir: {}
+
+---
+# Alternative: Strategic merge patch for easier application
+# Save this as debug-sidecar-patch.yaml and apply with:
+# kubectl patch deployment <deployment-name> --patch-file debug-sidecar-patch.yaml
+
+# For JSON patch format (alternative approach):
+# kubectl patch deployment <deployment-name> --type='json' -p='[
+#   {
+#     "op": "add",
+#     "path": "/spec/template/spec/containers/-",
+#     "value": {
+#       "name": "debug-sidecar",
+#       "image": "ghcr.io/mortenduus/dotdebug:latest",
+#       "command": ["sleep", "infinity"],
+#       "volumeMounts": [{"name": "diagnostics", "mountPath": "/tmp"}],
+#       "securityContext": {"capabilities": {"add": ["NET_ADMIN", "SYS_PTRACE", "NET_RAW"]}},
+#       "resources": {"limits": {"memory": "256Mi", "cpu": "200m"}, "requests": {"memory": "128Mi", "cpu": "100m"}}
+#     }
+#   },
+#   {
+#     "op": "add",
+#     "path": "/spec/template/spec/volumes/-",
+#     "value": {"name": "diagnostics", "emptyDir": {}}
+#   }
+# ]'
+
