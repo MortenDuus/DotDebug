@@ -16,9 +16,15 @@ RUN apt-get update && apt-get install -y \
     openssl \
     speedtest-cli \
     iftop \
-    strace \
+    dnsutils \
+    htop \
+    lsof \
+    nmap \
+    traceroute \
+    mtr \
     tcpdump \
     tcptraceroute \
+    strace \
     util-linux \
     vim \
     nano \
