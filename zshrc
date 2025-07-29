@@ -60,6 +60,14 @@ alias dotnet-ports='lsof -i | grep dotnet'   # Show .NET network connections
 alias dotnet-files='lsof -p $(pgrep -f dotnet) 2>/dev/null' # Files opened by .NET processes
 alias tmp-files='ls -la /tmp/'               # List shared diagnostic files
 
+# Load testing shortcuts
+alias loadtest-quick='artillery quick --count 10 --num 2'    # Quick load test
+alias loadtest-edit='micro /root/artillery-loadtest.yaml'     # Edit load test template
+alias loadtest-run='artillery run /root/artillery-loadtest.yaml'  # Run load test template
+alias yaml-edit='micro'                      # Better YAML editor
+alias yaml-check='yaml-cli validate'         # Validate YAML
+alias json-pretty='prettyjson'               # Pretty print JSON
+
 # General utilities
 alias ll='ls -alF'
 alias la='ls -A'
@@ -146,6 +154,61 @@ trace-dotnet() {
     echo "Tracing .NET process: $pid ($1) for ${duration}s"
     echo "Output file: $filename"
     timeout $duration dotnet-trace collect -p $pid -o "$filename"
+}
+
+# Load testing functions
+loadtest() {
+    if [ -z "$1" ]; then
+        echo "Usage: loadtest [url] [users] [duration]"
+        echo "Example: loadtest http://api-service:8080/health 10 30s"
+        return 1
+    fi
+    local url="$1"
+    local users=${2:-10}
+    local duration=${3:-30s}
+    local timestamp=$(date +%Y%m%d_%H%M%S)
+    local config="/tmp/loadtest-${timestamp}.yaml"
+    
+    echo "Creating Artillery config: $config"
+    cat > "$config" << EOF
+config:
+  target: '${url%/*}'
+  phases:
+    - duration: $duration
+      arrivalRate: $users
+scenarios:
+  - name: "Load test"
+    requests:
+      - get:
+          url: '${url#*/}'
+EOF
+    
+    echo "Running load test against: $url"
+    echo "Users: $users, Duration: $duration"
+    artillery run "$config" --output "/tmp/loadtest-report-${timestamp}.json"
+}
+
+create-yaml-template() {
+    local filename=${1:-"/tmp/example.yaml"}
+    echo "Creating YAML template: $filename"
+    cat > "$filename" << 'EOF'
+# Example YAML configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: example-config
+  namespace: default
+data:
+  config.yaml: |
+    database:
+      host: postgres.default.svc.cluster.local
+      port: 5432
+      name: myapp
+    logging:
+      level: info
+      format: json
+EOF
+    echo "Template created. Edit with: micro $filename"
 }
 
 

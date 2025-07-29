@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y tcptraceroute \
     htop \
     vim \
     nano \
+    micro \
     tree \
     less \
     procps \
@@ -51,7 +52,9 @@ RUN dotnet tool install -g dotnet-counters && \
 
 # Install Node.js and performance testing tools
 RUN apt update -y && apt install -y nodejs npm && \
-    npm install -g artillery@latest
+    npm install -g artillery@latest && \
+    npm install -g yaml-cli && \
+    npm install -g prettyjson
 
 # Clean up package files
 RUN apt-get clean && \
@@ -86,6 +89,7 @@ COPY p10k.zsh /root/.p10k.zsh
 COPY debug-sidecar.sh /usr/local/bin/debug-sidecar
 COPY debug-network.sh /usr/local/bin/debug-network
 COPY motd /root/.motd
+COPY artillery-loadtest.yaml /root/artillery-loadtest.yaml
 
 # Make debug scripts executable
 RUN chmod +x /usr/local/bin/debug-sidecar /usr/local/bin/debug-network

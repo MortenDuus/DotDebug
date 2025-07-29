@@ -10,7 +10,8 @@ Version: 0.3
 🔧 Application Debugging:
    • dotnet-counters, dotnet-dump, dotnet-trace
    • strace, htop, ps, lsof
-   • Node.js with Artillery for performance testing
+   • Artillery.io for load testing
+   • YAML/JSON editing and validation tools
 
 📋 Quick Commands:
    • debug-sidecar [host] [port]     - Full pod debug info
@@ -33,6 +34,18 @@ Version: 0.3
    • monitor-dotnet [app-name]       - Live performance monitoring
    • dump-dotnet [app-name]          - Create memory dump to /tmp
    • trace-dotnet [app-name] [secs]  - Execution tracing to /tmp
+
+🎯 Load Testing Functions:
+   • loadtest [url] [users] [duration] - Create and run Artillery load test
+   • loadtest-quick [url]             - Quick 10 user load test
+   • create-yaml-template [file]      - Create YAML config template
+   • artillery run /root/artillery-loadtest.yaml - Run pre-configured load test
+
+🛠️  File Editing & Validation:
+   • micro /root/artillery-loadtest.yaml - Edit the included load test template
+   • micro [file]                    - Advanced terminal editor with syntax highlighting
+   • yaml-check [file]               - Validate YAML syntax
+   • json-pretty [file]              - Pretty print JSON files
 
 💡 Sidecar Debugging Examples:
    • debug-sidecar api-service 8080

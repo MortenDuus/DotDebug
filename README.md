@@ -178,6 +178,42 @@ diskusage                   # Directory sizes sorted
 openfiles                   # Show open files
 ```
 
+### Load Testing & Performance
+```bash
+# Pre-configured load test (edit first, then run)
+loadtest-edit                  # Edit the included Artillery template
+loadtest-run                   # Run the pre-configured load test
+artillery run /root/artillery-loadtest.yaml  # Same as above
+
+# Quick custom load tests
+loadtest [url] [users] [duration]  # Custom Artillery load test
+loadtest-quick [url]        # Quick 10 user load test  
+artillery quick --count 10 --num 2 [url]  # Artillery quick test
+```
+
+### Pre-configured Load Test Template
+The container includes a comprehensive Artillery load test template at `/root/artillery-loadtest.yaml` with:
+- **Multi-phase testing**: Warm-up, load, and spike phases
+- **Multiple scenarios**: Health checks, API endpoints, complex operations
+- **Performance thresholds**: P95/P99 response time limits
+- **Detailed comments**: Examples for common use cases
+
+```bash
+# Quick workflow:
+loadtest-edit               # 1. Edit the template for your service
+loadtest-run                # 2. Run the load test
+ls /tmp/*.json              # 3. View generated reports
+```
+
+### File Editing & Configuration
+```bash
+micro [file]                # Advanced editor with syntax highlighting
+yaml-edit [file]            # Alias for micro (great for YAML)
+yaml-check [file]           # Validate YAML syntax
+json-pretty [file]          # Pretty print JSON
+create-yaml-template [file] # Create YAML config template
+```
+
 ### Network/Envoy Debugging  
 ```bash
 envoy-stats                 # Get Envoy proxy metrics (if available)
