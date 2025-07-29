@@ -246,6 +246,12 @@ dotnet-trace convert /tmp/app-trace.nettrace --format speedscope
 # First, identify the .NET process (typically only one diagnostic-enabled app)
 dotnet-counters ps
 
+# 🌐 COMPREHENSIVE NETWORK MONITORING - All counters at once
+monitor-network-full MyApp         # All HTTP, Kestrel, ASP.NET Core, and socket counters
+monitor-network-quick MyApp        # Essential network counters only
+monitor-http-detailed MyApp        # Detailed HTTP client monitoring
+monitor-kestrel-detailed MyApp     # Detailed Kestrel server monitoring
+
 # Monitor all HTTP client metrics in real-time (using process ID from above)
 dotnet-counters monitor -p <PID> --counters System.Net.Http
 
@@ -276,7 +282,27 @@ dotnet-counters monitor -p $DOTNET_PID --counters \
   --format json
 ```
 
-### HTTP Client Debugging Examples
+### Comprehensive Network Performance Monitoring (Enhanced Mode)
+> **New**: All-in-one network monitoring functions for complete visibility
+
+```bash
+# 🌐 Monitor ALL network-related counters at once
+netmon MyApp                    # Complete network monitoring (HTTP + Kestrel + ASP.NET Core + Sockets)
+netmon-quick MyApp              # Essential network counters only (faster refresh)
+
+# 🎯 Focused monitoring for specific areas
+httpmon MyApp                   # Detailed HTTP client monitoring only
+kestrelmon MyApp                # Detailed Kestrel server monitoring only
+
+# What's included in comprehensive monitoring:
+# • System.Net.Http - All HTTP client metrics (requests, connections, timing, failures)
+# • Microsoft.AspNetCore.Hosting - ASP.NET Core request handling
+# • Microsoft.AspNetCore.Server.Kestrel - Server connections, TLS, queues
+# • System.Net.Sockets - Socket connections
+# • System.Net.NameResolution - DNS lookups
+```
+
+### Individual Counter Examples
 ```bash
 # 1. Identify HTTP client connection issues (using reliable process detection)
 DOTNET_PID=$(dotnet-counters ps | tail -n +2 | head -1 | awk '{print $1}')

@@ -291,6 +291,12 @@ http-monitor() {
     dotnet-counters monitor -p $pid --counters 'System.Net.Http[requests-started,requests-failed,current-connections,connections-established-per-second]'
 }
 
+# Quick aliases for comprehensive monitoring
+alias netmon='monitor-network-full'        # Comprehensive network monitoring
+alias netmon-quick='monitor-network-quick' # Quick network overview
+alias httpmon='monitor-http-detailed'      # Detailed HTTP client monitoring  
+alias kestrelmon='monitor-kestrel-detailed' # Detailed Kestrel server monitoring
+
 http-connections() {
     if ! check-process-access; then
         echo "❌ Cannot see .NET processes from other containers"
@@ -360,59 +366,131 @@ http-queue-performance() {
     dotnet-counters monitor -p $pid --counters 'System.Net.Http[http11-requests-queue-duration,http20-requests-queue-duration,current-requests]'
 }
 
-# Load testing functions
-loadtest() {
-    if [ -z "$1" ]; then
-        echo "Usage: loadtest [url] [users] [duration]"
-        echo "Example: loadtest http://api-service:8080/health 10 30s"
+# Comprehensive network monitoring - all HTTP, Kestrel, and networking counters
+monitor-network-full() {
+    if ! check-process-access; then
+        echo "❌ Cannot see .NET processes from other containers"
+        echo "   Process namespace sharing is not enabled for this pod"
+        echo "   Use volume-based debugging: check /tmp for network performance logs"
         return 1
     fi
-    local url="$1"
-    local users=${2:-10}
-    local duration=${3:-30s}
-    local timestamp=$(date +%Y%m%d_%H%M%S)
-    local config="/tmp/loadtest-${timestamp}.yaml"
     
-    echo "Creating Artillery config: $config"
-    cat > "$config" << EOF
-config:
-  target: '${url%/*}'
-  phases:
-    - duration: $duration
-      arrivalRate: $users
-scenarios:
-  - name: "Load test"
-    requests:
-      - get:
-          url: '${url#*/}'
-EOF
+    if [ -z "$1" ]; then
+        echo "Usage: monitor-network-full [process-name-pattern] [refresh-interval]"
+        echo "Example: monitor-network-full MyApp 2"
+        echo ""
+        echo "This monitors ALL network-related counters:"
+        echo "  • HTTP Client (requests, connections, failures, timing)"
+        echo "  • Kestrel Server (connections, requests, errors)"
+        echo "  • ASP.NET Core (requests, responses, routing)"
+        echo "  • Socket connections and networking"
+        return 1
+    fi
     
-    echo "Running load test against: $url"
-    echo "Users: $users, Duration: $duration"
-    artillery run "$config" --output "/tmp/loadtest-report-${timestamp}.json"
+    local pid=$(get-dotnet-pid "$1")
+    if [ -z "$pid" ]; then
+        echo "No .NET process found matching: $1"
+        echo "Available .NET processes:"
+        dotnet-counters ps 2>/dev/null
+        return 1
+    fi
+    
+    local refresh_interval=${2:-3}
+    echo "🌐 Comprehensive Network Monitoring for: $pid ($1)"
+    echo "📊 Refresh interval: ${refresh_interval}s"
+    echo "🔄 Press Ctrl+C to stop"
+    echo ""
+    
+    dotnet-counters monitor -p $pid --refresh-interval $refresh_interval --counters \
+        'System.Net.Http[requests-started,requests-started-rate,requests-failed,requests-failed-rate,requests-aborted,requests-aborted-rate,current-requests,current-connections,connections-established-per-second,http11-connections-current-total,http20-connections-current-total,http11-requests-queue-duration,http20-requests-queue-duration]' \
+        'Microsoft.AspNetCore.Hosting[requests-per-second,total-requests,current-requests,failed-requests]' \
+        'Microsoft.AspNetCore.Server.Kestrel[connection-queue-length,request-queue-length,total-connections,current-connections,connection-rate,total-tls-handshakes,current-tls-handshakes,failed-tls-handshakes,current-upgraded-requests,total-upgraded-requests,request-rate,bad-requests,current-bad-requests]' \
+        'System.Net.Sockets[outgoing-connections-established,incoming-connections-established]' \
+        'System.Net.NameResolution[dns-lookups-requested,dns-lookups-duration]'
 }
 
-create-yaml-template() {
-    local filename=${1:-"/tmp/example.yaml"}
-    echo "Creating YAML template: $filename"
-    cat > "$filename" << 'EOF'
-# Example YAML configuration
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: example-config
-  namespace: default
-data:
-  config.yaml: |
-    database:
-      host: postgres.default.svc.cluster.local
-      port: 5432
-      name: myapp
-    logging:
-      level: info
-      format: json
-EOF
-    echo "Template created. Edit with: micro $filename"
+# Quick network overview - essential counters only
+monitor-network-quick() {
+    if ! check-process-access; then
+        echo "❌ Cannot see .NET processes from other containers"
+        echo "   Process namespace sharing is not enabled for this pod"
+        return 1
+    fi
+    
+    if [ -z "$1" ]; then
+        echo "Usage: monitor-network-quick [process-name-pattern]"
+        echo "Example: monitor-network-quick MyApp"
+        return 1
+    fi
+    
+    local pid=$(get-dotnet-pid "$1")
+    if [ -z "$pid" ]; then
+        echo "No .NET process found matching: $1"
+        return 1
+    fi
+    
+    echo "⚡ Quick Network Overview for: $pid ($1)"
+    echo ""
+    
+    dotnet-counters monitor -p $pid --refresh-interval 2 --counters \
+        'System.Net.Http[requests-started-rate,requests-failed-rate,current-connections]' \
+        'Microsoft.AspNetCore.Hosting[requests-per-second,current-requests,failed-requests]' \
+        'Microsoft.AspNetCore.Server.Kestrel[current-connections,request-rate,bad-requests]'
+}
+
+# HTTP Client focus - detailed HTTP client monitoring
+monitor-http-detailed() {
+    if ! check-process-access; then
+        echo "❌ Cannot see .NET processes from other containers"
+        echo "   Process namespace sharing is not enabled for this pod"
+        return 1
+    fi
+    
+    if [ -z "$1" ]; then
+        echo "Usage: monitor-http-detailed [process-name-pattern]"
+        echo "Example: monitor-http-detailed MyApp"
+        return 1
+    fi
+    
+    local pid=$(get-dotnet-pid "$1")
+    if [ -z "$pid" ]; then
+        echo "No .NET process found matching: $1"
+        return 1
+    fi
+    
+    echo "🌐 Detailed HTTP Client Monitoring for: $pid ($1)"
+    echo ""
+    
+    dotnet-counters monitor -p $pid --refresh-interval 2 --counters \
+        'System.Net.Http[requests-started,requests-started-rate,requests-failed,requests-failed-rate,requests-aborted,requests-aborted-rate,current-requests,current-connections,connections-established-per-second,http11-connections-current-total,http20-connections-current-total,http11-requests-queue-duration,http20-requests-queue-duration,dns-lookups-duration]'
+}
+
+# Kestrel server focus - detailed server monitoring  
+monitor-kestrel-detailed() {
+    if ! check-process-access; then
+        echo "❌ Cannot see .NET processes from other containers"
+        echo "   Process namespace sharing is not enabled for this pod"
+        return 1
+    fi
+    
+    if [ -z "$1" ]; then
+        echo "Usage: monitor-kestrel-detailed [process-name-pattern]"
+        echo "Example: monitor-kestrel-detailed MyApp"
+        return 1
+    fi
+    
+    local pid=$(get-dotnet-pid "$1")
+    if [ -z "$pid" ]; then
+        echo "No .NET process found matching: $1"
+        return 1
+    fi
+    
+    echo "🖥️  Detailed Kestrel Server Monitoring for: $pid ($1)"
+    echo ""
+    
+    dotnet-counters monitor -p $pid --refresh-interval 2 --counters \
+        'Microsoft.AspNetCore.Server.Kestrel[connection-queue-length,request-queue-length,total-connections,current-connections,connection-rate,total-tls-handshakes,current-tls-handshakes,failed-tls-handshakes,current-upgraded-requests,total-upgraded-requests,request-rate,bad-requests,current-bad-requests]' \
+        'Microsoft.AspNetCore.Hosting[requests-per-second,total-requests,current-requests,failed-requests]'
 }
 
 

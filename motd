@@ -11,7 +11,13 @@
    • monitor-dotnet [app-name]       - Live performance monitoring
    • dump-dotnet [app-name]          - Create memory dump to /tmp
    • trace-dotnet [app-name] [secs]  - Execution tracing to /tmp
-   • http-monitor [app-name]         - Monitor HTTP client performance
+
+🌐 Comprehensive Network Monitoring:
+   • netmon [app-name]               - ALL network counters (HTTP+Kestrel+ASP.NET)
+   • netmon-quick [app-name]         - Essential network counters only
+   • httpmon [app-name]              - Detailed HTTP client monitoring
+   • kestrelmon [app-name]           - Detailed Kestrel server monitoring
+   • http-monitor [app-name]         - Basic HTTP client performance
    • http-connections [app-name]     - Monitor HTTP connection pools
    • http-failures [app-name]        - Monitor HTTP request failures
 Version: 0.5 (Secure + Enhanced Modes)
