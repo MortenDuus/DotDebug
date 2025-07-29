@@ -1,5 +1,20 @@
-🔍 Sidecar Debug Container - Pod Network & Process Debugging
-Version: 0.3
+🔍 Sidecar Debug Container - A🔒 Secure .NET Debugging (Volume-Based):
+   • tmp-files                       - List shared diagnostic files
+   • analyze-latest-dump             - Analyze newest .NET dump in /tmp
+   • watch-diagnostic-files          - Monitor log files in real-time
+   • show-diagnostic-summary         - Overview of all diagnostic data
+   • convert-traces                  - Convert .nettrace to speedscope
+
+🔓 Process-Based .NET Debugging (If Process Sharing Enabled):
+   • dotnet-counters ps              - List .NET processes (most reliable)
+   • dotnet-procs / dotnet-ps        - Show .NET processes across containers
+   • monitor-dotnet [app-name]       - Live performance monitoring
+   • dump-dotnet [app-name]          - Create memory dump to /tmp
+   • trace-dotnet [app-name] [secs]  - Execution tracing to /tmp
+   • http-monitor [app-name]         - Monitor HTTP client performance
+   • http-connections [app-name]     - Monitor HTTP connection pools
+   • http-failures [app-name]        - Monitor HTTP request failures
+Version: 0.5 (Secure + Enhanced Modes)
 ══════════════════════════════════════════════════════════
 
 🛠️  Network Debugging Tools:
@@ -8,10 +23,10 @@ Version: 0.3
    • netstat, ss, lsof, arp
 
 🔧 Application Debugging:
-   • dotnet-counters, dotnet-dump, dotnet-trace
-   • strace, htop, ps, lsof
+   • dotnet-dump, dotnet-trace analysis tools
    • Artillery.io for load testing
    • YAML/JSON editing and validation tools
+   • Secure volume-based diagnostic file analysis
 
 📋 Quick Commands:
    • debug-sidecar [host] [port]     - Full pod debug info
@@ -21,19 +36,19 @@ Version: 0.3
    • test-port [host] [port]         - Quick port connectivity test
    • test-http [url]                 - HTTP endpoint test
    • capture-traffic [host]          - Capture network packets
-   • trace-calls [pid]               - Trace system calls
 
 🔗 Useful Aliases:
    • listen = netstat -tlnp          • ports = ss -tulpn
    • conns = ss -tuln               • myip = hostname -i
-   • pstree = ps auxf              • netprocs = lsof -i
-   • dotnet-procs = .NET processes  • dotnet-ports = .NET connections
-   • tmp-files = shared volume files • listening = listening ports only
+   • netprocs = lsof -i             • listening = listening ports only
+   • tmp-files = list diagnostic files • motd = show this message
 
-🚀 .NET Debugging Functions:
-   • monitor-dotnet [app-name]       - Live performance monitoring
-   • dump-dotnet [app-name]          - Create memory dump to /tmp
-   • trace-dotnet [app-name] [secs]  - Execution tracing to /tmp
+� Secure .NET Debugging (Volume-Based):
+   • tmp-files                       - List shared diagnostic files
+   • analyze-latest-dump             - Analyze newest .NET dump in /tmp
+   • watch-diagnostic-files          - Monitor log files in real-time
+   • show-diagnostic-summary         - Overview of all diagnostic data
+   • convert-traces                  - Convert .nettrace to speedscope
 
 🎯 Load Testing Functions:
    • loadtest [url] [users] [duration] - Create and run Artillery load test
@@ -51,7 +66,7 @@ Version: 0.3
    • debug-sidecar api-service 8080
    • capture-traffic 10.244.1.5
    • test-port my-service.default.svc.cluster.local 80
-   • dotnet-counters monitor -p $(pgrep dotnet)
+   • dotnet-counters ps              - List .NET processes (recommended)
    • strace -p $(pgrep MyApp) -f -e network
 
 📊 Istio Service Mesh:

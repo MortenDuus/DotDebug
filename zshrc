@@ -37,7 +37,7 @@ plugins=(
 
 source $ZSH/oh-my-zsh.sh
 # User configuration
-cat .motd
+cat ~/.motd 2>/dev/null || true
 
 # Network debugging shortcuts
 alias listen='netstat -tlnp'
@@ -54,11 +54,35 @@ alias envoy-config='curl -s http://localhost:15000/config_dump'
 alias pstree='ps auxf'
 alias netprocs='lsof -i'
 
-# .NET debugging shortcuts
-alias dotnet-procs='ps aux | grep -i dotnet | grep -v grep'  # Show .NET processes
-alias dotnet-ports='lsof -i | grep dotnet'   # Show .NET network connections
-alias dotnet-files='lsof -p $(pgrep -f dotnet) 2>/dev/null' # Files opened by .NET processes
+# .NET debugging shortcuts (adaptive based on environment)
+# Volume-based (always available)
 alias tmp-files='ls -la /tmp/'               # List shared diagnostic files
+alias analyze-dumps='find /tmp -name "*.dmp" -exec echo "Analyzing: {}" \; -exec dotnet-dump analyze {} \;'
+alias view-logs='find /tmp -name "*.log" -o -name "*.txt" | head -5 | xargs tail -f'
+alias list-diagnostics='find /tmp -type f \( -name "*.json" -o -name "*.dmp" -o -name "*.log" -o -name "*.txt" -o -name "*.csv" \) -ls'
+
+# Process-based (available when process namespace sharing is enabled)
+alias dotnet-procs='ps aux | grep -i dotnet | grep -v grep'  # Show .NET processes
+alias dotnet-ps='ps aux | grep -i dotnet | grep -v grep'     # Alias for dotnet-procs
+alias dotnet-ports='lsof -i | grep dotnet'   # Show .NET network connections
+# Helper function for reliable .NET process detection
+get-dotnet-pid() {
+    if [ -z "$1" ]; then
+        # If no pattern provided, get the first .NET process
+        dotnet-counters ps 2>/dev/null | tail -n +2 | head -1 | awk '{print $1}'
+    else
+        # Try dotnet-counters first (more reliable for .NET processes)
+        local dotnet_pid=$(dotnet-counters ps 2>/dev/null | grep -i "$1" | head -1 | awk '{print $1}')
+        if [ -n "$dotnet_pid" ]; then
+            echo "$dotnet_pid"
+        else
+            # Fallback to pgrep if dotnet-counters doesn't find it
+            pgrep -f "$1" | head -1
+        fi
+    fi
+}
+
+alias dotnet-files='lsof -p $(get-dotnet-pid) 2>/dev/null' # Files opened by .NET processes
 
 # Load testing shortcuts
 alias loadtest-quick='artillery quick --count 10 --num 2'    # Quick load test
@@ -85,6 +109,7 @@ alias findlarge='find . -type f -size +100M -exec ls -lh {} \;'  # Find large fi
 alias netstat-summary='netstat -s'    # Network statistics summary
 alias openfiles='lsof +L1'        # Show open files
 alias listening='netstat -tlnp | grep LISTEN'  # Only listening ports
+alias motd='cat ~/.motd'           # Show the welcome message again
 
 # Quick debugging functions
 test-port() {
@@ -103,16 +128,79 @@ trace-calls() {
     strace -p "$1" -f -e network
 }
 
-# Additional debugging functions
+# Volume-based .NET diagnostic functions (always available)
+analyze-latest-dump() {
+    local latest_dump=$(find /tmp -name "*.dmp" -type f -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2)
+    if [ -n "$latest_dump" ]; then
+        echo "Analyzing latest dump: $latest_dump"
+        dotnet-dump analyze "$latest_dump"
+    else
+        echo "No .NET dump files found in /tmp"
+        echo "Your .NET application should create dumps and save them to /tmp"
+    fi
+}
+
+watch-diagnostic-files() {
+    echo "Watching for new diagnostic files in /tmp..."
+    echo "Press Ctrl+C to stop"
+    find /tmp -name "*.log" -o -name "*.txt" -o -name "*.json" | head -5 | xargs tail -f
+}
+
+show-diagnostic-summary() {
+    echo "=== Diagnostic Files Summary ==="
+    echo ""
+    echo "📁 Log files:"
+    find /tmp -name "*.log" -o -name "*.txt" | head -10
+    echo ""
+    echo "📊 Performance data:"
+    find /tmp -name "*.csv" -o -name "*perf*" -o -name "*metrics*" | head -10
+    echo ""
+    echo "🗄️ Memory dumps:"
+    find /tmp -name "*.dmp" | head -10
+    echo ""
+    echo "⚙️ Configuration files:"
+    find /tmp -name "*.json" -o -name "*.yaml" -o -name "*.xml" | head -10
+}
+
+convert-traces() {
+    echo "Converting .NET trace files to speedscope format..."
+    find /tmp -name "*.nettrace" | while read trace_file; do
+        echo "Converting: $trace_file"
+        local output_file="${trace_file%.nettrace}.speedscope.json"
+        dotnet-trace convert "$trace_file" --format speedscope --output "$output_file"
+        echo "Created: $output_file"
+    done
+}
+
+# Process-based .NET debugging functions (requires process namespace sharing)
+check-process-access() {
+    # Check if we can see other containers' processes
+    local dotnet_count=$(ps aux | grep -c "[d]otnet" || echo "0")
+    if [ "$dotnet_count" -gt 0 ]; then
+        return 0  # Can see .NET processes
+    else
+        return 1  # Cannot see .NET processes
+    fi
+}
+
 monitor-dotnet() {
+    if ! check-process-access; then
+        echo "❌ Cannot see .NET processes from other containers"
+        echo "   Process namespace sharing is not enabled for this pod"
+        echo "   Use volume-based debugging: analyze-latest-dump, tmp-files, etc."
+        return 1
+    fi
+    
     if [ -z "$1" ]; then
         echo "Usage: monitor-dotnet [process-name-pattern]"
         echo "Example: monitor-dotnet MyApp"
         return 1
     fi
-    local pid=$(pgrep -f "$1" | head -1)
+    local pid=$(get-dotnet-pid "$1")
     if [ -z "$pid" ]; then
-        echo "No process found matching: $1"
+        echo "No .NET process found matching: $1"
+        echo "Available .NET processes:"
+        dotnet-counters ps 2>/dev/null || ps aux | grep -i dotnet | grep -v grep
         return 1
     fi
     echo "Monitoring .NET process: $pid ($1)"
@@ -120,14 +208,26 @@ monitor-dotnet() {
 }
 
 dump-dotnet() {
+    if ! check-process-access; then
+        echo "❌ Cannot see .NET processes from other containers"
+        echo "   Process namespace sharing is not enabled for this pod"
+        echo "   Your .NET app should create dumps and write them to /tmp"
+        echo "   Then use: analyze-latest-dump"
+        return 1
+    fi
+    
     if [ -z "$1" ]; then
         echo "Usage: dump-dotnet [process-name-pattern]"
         echo "Example: dump-dotnet MyApp"
         return 1
     fi
-    local pid=$(pgrep -f "$1" | head -1)
+    local pid=$(get-dotnet-pid "$1")
     if [ -z "$pid" ]; then
-        echo "No process found matching: $1"
+        echo "No .NET process found matching: $1"
+        echo "Available .NET processes:"
+        dotnet-counters ps 2>/dev/null || ps aux | grep -i dotnet | grep -v grep
+        return 1
+        ps aux | grep -i dotnet | grep -v grep
         return 1
     fi
     local timestamp=$(date +%Y%m%d_%H%M%S)
@@ -138,14 +238,24 @@ dump-dotnet() {
 }
 
 trace-dotnet() {
+    if ! check-process-access; then
+        echo "❌ Cannot see .NET processes from other containers"
+        echo "   Process namespace sharing is not enabled for this pod"
+        echo "   Your .NET app should create traces and write them to /tmp"
+        echo "   Then use: convert-traces"
+        return 1
+    fi
+    
     if [ -z "$1" ]; then
         echo "Usage: trace-dotnet [process-name-pattern] [duration-seconds]"
         echo "Example: trace-dotnet MyApp 30"
         return 1
     fi
-    local pid=$(pgrep -f "$1" | head -1)
+    local pid=$(get-dotnet-pid "$1")
     if [ -z "$pid" ]; then
-        echo "No process found matching: $1"
+        echo "No .NET process found matching: $1"
+        echo "Available .NET processes:"
+        dotnet-counters ps 2>/dev/null || ps aux | grep -i dotnet | grep -v grep
         return 1
     fi
     local duration=${2:-10}
@@ -154,6 +264,100 @@ trace-dotnet() {
     echo "Tracing .NET process: $pid ($1) for ${duration}s"
     echo "Output file: $filename"
     timeout $duration dotnet-trace collect -p $pid -o "$filename"
+}
+
+# HTTP Client specific monitoring functions (requires process namespace sharing)
+http-monitor() {
+    if ! check-process-access; then
+        echo "❌ Cannot see .NET processes from other containers"
+        echo "   Process namespace sharing is not enabled for this pod"
+        echo "   Use volume-based debugging: check /tmp for HTTP client logs"
+        return 1
+    fi
+    
+    if [ -z "$1" ]; then
+        echo "Usage: http-monitor [process-name-pattern]"
+        echo "Example: http-monitor MyApp"
+        return 1
+    fi
+    local pid=$(get-dotnet-pid "$1")
+    if [ -z "$pid" ]; then
+        echo "No .NET process found matching: $1"
+        echo "Available .NET processes:"
+        dotnet-counters ps 2>/dev/null
+        return 1
+    fi
+    echo "Monitoring HTTP client performance for: $pid ($1)"
+    dotnet-counters monitor -p $pid --counters System.Net.Http[requests-started,requests-failed,current-connections,connections-established-per-second]
+}
+
+http-connections() {
+    if ! check-process-access; then
+        echo "❌ Cannot see .NET processes from other containers"
+        echo "   Process namespace sharing is not enabled for this pod"
+        return 1
+    fi
+    
+    if [ -z "$1" ]; then
+        echo "Usage: http-connections [process-name-pattern]"
+        echo "Example: http-connections MyApp"
+        return 1
+    fi
+    local pid=$(get-dotnet-pid "$1")
+    if [ -z "$pid" ]; then
+        echo "No .NET process found matching: $1"
+        echo "Available .NET processes:"
+        dotnet-counters ps 2>/dev/null
+        return 1
+    fi
+    echo "Monitoring HTTP connection pool for: $pid ($1)"
+    dotnet-counters monitor -p $pid --counters System.Net.Http[current-connections,http11-connections-current-total,http20-connections-current-total,connections-established-per-second]
+}
+
+http-failures() {
+    if ! check-process-access; then
+        echo "❌ Cannot see .NET processes from other containers"
+        echo "   Process namespace sharing is not enabled for this pod"
+        return 1
+    fi
+    
+    if [ -z "$1" ]; then
+        echo "Usage: http-failures [process-name-pattern]"
+        echo "Example: http-failures MyApp"
+        return 1
+    fi
+    local pid=$(get-dotnet-pid "$1")
+    if [ -z "$pid" ]; then
+        echo "No .NET process found matching: $1"
+        echo "Available .NET processes:"
+        dotnet-counters ps 2>/dev/null
+        return 1
+    fi
+    echo "Monitoring HTTP request failures for: $pid ($1)"
+    dotnet-counters monitor -p $pid --counters System.Net.Http[requests-failed,requests-failed-rate,requests-aborted,requests-aborted-rate]
+}
+
+http-queue-performance() {
+    if ! check-process-access; then
+        echo "❌ Cannot see .NET processes from other containers"
+        echo "   Process namespace sharing is not enabled for this pod"
+        return 1
+    fi
+    
+    if [ -z "$1" ]; then
+        echo "Usage: http-queue-performance [process-name-pattern]"
+        echo "Example: http-queue-performance MyApp"
+        return 1
+    fi
+    local pid=$(get-dotnet-pid "$1")
+    if [ -z "$pid" ]; then
+        echo "No .NET process found matching: $1"
+        echo "Available .NET processes:"
+        dotnet-counters ps 2>/dev/null
+        return 1
+    fi
+    echo "Monitoring HTTP request queue performance for: $pid ($1)"
+    dotnet-counters monitor -p $pid --counters System.Net.Http[http11-requests-queue-duration,http20-requests-queue-duration,current-requests]
 }
 
 # Load testing functions
