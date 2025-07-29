@@ -288,7 +288,7 @@ http-monitor() {
         return 1
     fi
     echo "Monitoring HTTP client performance for: $pid ($1)"
-    dotnet-counters monitor -p $pid --counters System.Net.Http[requests-started,requests-failed,current-connections,connections-established-per-second]
+    dotnet-counters monitor -p $pid --counters 'System.Net.Http[requests-started,requests-failed,current-connections,connections-established-per-second]'
 }
 
 http-connections() {
@@ -311,7 +311,7 @@ http-connections() {
         return 1
     fi
     echo "Monitoring HTTP connection pool for: $pid ($1)"
-    dotnet-counters monitor -p $pid --counters System.Net.Http[current-connections,http11-connections-current-total,http20-connections-current-total,connections-established-per-second]
+    dotnet-counters monitor -p $pid --counters 'System.Net.Http[current-connections,http11-connections-current-total,http20-connections-current-total,connections-established-per-second]'
 }
 
 http-failures() {
@@ -334,7 +334,7 @@ http-failures() {
         return 1
     fi
     echo "Monitoring HTTP request failures for: $pid ($1)"
-    dotnet-counters monitor -p $pid --counters System.Net.Http[requests-failed,requests-failed-rate,requests-aborted,requests-aborted-rate]
+    dotnet-counters monitor -p $pid --counters 'System.Net.Http[requests-failed,requests-failed-rate,requests-aborted,requests-aborted-rate]'
 }
 
 http-queue-performance() {
@@ -357,7 +357,7 @@ http-queue-performance() {
         return 1
     fi
     echo "Monitoring HTTP request queue performance for: $pid ($1)"
-    dotnet-counters monitor -p $pid --counters System.Net.Http[http11-requests-queue-duration,http20-requests-queue-duration,current-requests]
+    dotnet-counters monitor -p $pid --counters 'System.Net.Http[http11-requests-queue-duration,http20-requests-queue-duration,current-requests]'
 }
 
 # Load testing functions
