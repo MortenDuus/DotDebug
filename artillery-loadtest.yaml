@@ -1,0 +1,111 @@
+# Artillery Load Test Configuration Template
+# Edit this file with: micro /root/artillery-loadtest.yaml
+# Run with: artillery run /root/artillery-loadtest.yaml
+
+config:
+  target: "http://my-service:8080"
+  phases:
+    # Warm-up phase: 5 users over 30 seconds
+    - duration: 30
+      arrivalRate: 5
+      name: "Warm-up"
+
+    # Load phase: 20 users over 2 minutes
+    - duration: 120
+      arrivalRate: 20
+      name: "Load test"
+
+    # Spike phase: 50 users over 30 seconds
+    - duration: 30
+      arrivalRate: 50
+      name: "Spike test"
+
+  # Default headers for all requests
+  defaults:
+    headers:
+      "User-Agent": "Artillery Load Test"
+      "Accept": "application/json"
+
+  # Plugins for additional functionality
+  plugins:
+    metrics-by-endpoint: {}
+
+scenarios:
+  # Health check scenario
+  - name: "Health Check"
+    weight: 30
+    requests:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+
+  # API endpoint testing
+  - name: "API Endpoints"
+    weight: 50
+    requests:
+      - get:
+          url: "/api/users"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data"
+
+      - post:
+          url: "/api/users"
+          json:
+            name: "Test User"
+            email: "test@example.com"
+          expect:
+            - statusCode: [200, 201]
+
+  # Stress test scenario with longer requests
+  - name: "Complex Operations"
+    weight: 20
+    requests:
+      - get:
+          url: "/api/reports"
+          expect:
+            - statusCode: 200
+
+      - think: 2 # Wait 2 seconds between requests
+
+# Performance thresholds
+# Artillery will fail if these are exceeded
+expect:
+  thresholds:
+    http.response_time:
+      p95: 500 # 95% of requests should complete within 500ms
+      p99: 1000 # 99% of requests should complete within 1000ms
+    http.request_rate: 100 # Should handle at least 100 requests/second
+
+# Examples of common configurations:
+#
+# Environment variables:
+# config:
+#   target: '{{ $env.TARGET_URL }}'
+#
+# Custom phases:
+# phases:
+#   - duration: 60
+#     arrivalRate: 1
+#     rampTo: 10      # Gradually increase from 1 to 10 users
+#
+# Advanced scenarios with loops:
+# scenarios:
+#   - name: "Repeated operations"
+#     requests:
+#       - loop:
+#         - get:
+#             url: "/api/data/{{ $randomInt(1, 100) }}"
+#         count: 5
+#
+# Custom functions in JavaScript:
+# config:
+#   processor: "./functions.js"
+#
+# WebSocket testing:
+# scenarios:
+#   - engine: ws
+#     requests:
+#       - send: "Hello WebSocket"
+#       - think: 1
