@@ -57,9 +57,6 @@ alias netprocs='lsof -i'
 # .NET debugging shortcuts (adaptive based on environment)
 # Volume-based (always available)
 alias tmp-files='ls -la /tmp/'               # List shared diagnostic files
-alias analyze-dumps='find /tmp -name "*.dmp" -exec echo "Analyzing: {}" \; -exec dotnet-dump analyze {} \;'
-alias view-logs='find /tmp -name "*.log" -o -name "*.txt" | head -5 | xargs tail -f'
-alias list-diagnostics='find /tmp -type f \( -name "*.json" -o -name "*.dmp" -o -name "*.log" -o -name "*.txt" -o -name "*.csv" \) -ls'
 
 # Process-based (available when process namespace sharing is enabled)
 alias dotnet-procs='ps aux | grep -i dotnet | grep -v grep'  # Show .NET processes
@@ -136,29 +133,25 @@ analyze-latest-dump() {
         dotnet-dump analyze "$latest_dump"
     else
         echo "No .NET dump files found in /tmp"
-        echo "Your .NET application should create dumps and save them to /tmp"
     fi
 }
 
 watch-diagnostic-files() {
     echo "Watching for new diagnostic files in /tmp..."
     echo "Press Ctrl+C to stop"
-    find /tmp -name "*.log" -o -name "*.txt" -o -name "*.json" | head -5 | xargs tail -f
+    watch -n 2 'ls -la /tmp/*.{dmp,nettrace,json} 2>/dev/null || echo "No diagnostic files found"'
 }
 
 show-diagnostic-summary() {
     echo "=== Diagnostic Files Summary ==="
     echo ""
-    echo "📁 Log files:"
-    find /tmp -name "*.log" -o -name "*.txt" | head -10
-    echo ""
-    echo "📊 Performance data:"
-    find /tmp -name "*.csv" -o -name "*perf*" -o -name "*metrics*" | head -10
-    echo ""
-    echo "🗄️ Memory dumps:"
+    echo "Memory dumps:"
     find /tmp -name "*.dmp" | head -10
     echo ""
-    echo "⚙️ Configuration files:"
+    echo "Performance data:"
+    find /tmp -name "*.nettrace" -o -name "*.csv" -o -name "*perf*" -o -name "*metrics*" | head -10
+    echo ""
+    echo "Configuration files:"
     find /tmp -name "*.json" -o -name "*.yaml" -o -name "*.xml" | head -10
 }
 
@@ -185,9 +178,9 @@ check-process-access() {
 
 monitor-dotnet() {
     if ! check-process-access; then
-        echo "❌ Cannot see .NET processes from other containers"
-        echo "   Process namespace sharing is not enabled for this pod"
-        echo "   Use volume-based debugging: analyze-latest-dump, tmp-files, etc."
+        echo "Cannot see .NET processes from other containers"
+        echo "Process namespace sharing is not enabled for this pod"
+        echo "Use volume-based debugging: analyze-latest-dump, tmp-files, etc."
         return 1
     fi
     
@@ -209,10 +202,10 @@ monitor-dotnet() {
 
 dump-dotnet() {
     if ! check-process-access; then
-        echo "❌ Cannot see .NET processes from other containers"
-        echo "   Process namespace sharing is not enabled for this pod"
-        echo "   Your .NET app should create dumps and write them to /tmp"
-        echo "   Then use: analyze-latest-dump"
+        echo "Cannot see .NET processes from other containers"
+        echo "Process namespace sharing is not enabled for this pod"
+        echo "Your .NET app should create dumps and write them to /tmp"
+        echo "Then use: analyze-latest-dump"
         return 1
     fi
     
@@ -227,8 +220,6 @@ dump-dotnet() {
         echo "Available .NET processes:"
         dotnet-counters ps 2>/dev/null || ps aux | grep -i dotnet | grep -v grep
         return 1
-        ps aux | grep -i dotnet | grep -v grep
-        return 1
     fi
     local timestamp=$(date +%Y%m%d_%H%M%S)
     local filename="/tmp/dotnet-dump-${1}-${timestamp}.dmp"
@@ -239,10 +230,10 @@ dump-dotnet() {
 
 trace-dotnet() {
     if ! check-process-access; then
-        echo "❌ Cannot see .NET processes from other containers"
-        echo "   Process namespace sharing is not enabled for this pod"
-        echo "   Your .NET app should create traces and write them to /tmp"
-        echo "   Then use: convert-traces"
+        echo "Cannot see .NET processes from other containers"
+        echo "Process namespace sharing is not enabled for this pod"
+        echo "Your .NET app should create traces and write them to /tmp"
+        echo "Then use: convert-traces"
         return 1
     fi
     
@@ -269,9 +260,9 @@ trace-dotnet() {
 # HTTP Client specific monitoring functions (requires process namespace sharing)
 http-monitor() {
     if ! check-process-access; then
-        echo "❌ Cannot see .NET processes from other containers"
-        echo "   Process namespace sharing is not enabled for this pod"
-        echo "   Use volume-based debugging: check /tmp for HTTP client logs"
+        echo "Cannot see .NET processes from other containers"
+        echo "Process namespace sharing is not enabled for this pod"
+        echo "Use volume-based debugging: check /tmp for HTTP client logs"
         return 1
     fi
     
@@ -293,37 +284,13 @@ http-monitor() {
 
 # Quick aliases for comprehensive monitoring
 alias netmon='monitor-network-full'        # Comprehensive network monitoring
-alias netmon-quick='monitor-network-quick' # Quick network overview
-alias httpmon='monitor-http-detailed'      # Detailed HTTP client monitoring  
-alias kestrelmon='monitor-kestrel-detailed' # Detailed Kestrel server monitoring
+alias httpmon='monitor-http'      # Detailed HTTP client monitoring  
 
-http-connections() {
-    if ! check-process-access; then
-        echo "❌ Cannot see .NET processes from other containers"
-        echo "   Process namespace sharing is not enabled for this pod"
-        return 1
-    fi
-    
-    if [ -z "$1" ]; then
-        echo "Usage: http-connections [process-name-pattern]"
-        echo "Example: http-connections MyApp"
-        return 1
-    fi
-    local pid=$(get-dotnet-pid "$1")
-    if [ -z "$pid" ]; then
-        echo "No .NET process found matching: $1"
-        echo "Available .NET processes:"
-        dotnet-counters ps 2>/dev/null
-        return 1
-    fi
-    echo "Monitoring HTTP connection pool for: $pid ($1)"
-    dotnet-counters monitor -p $pid --counters 'System.Net.Http[current-connections,http11-connections-current-total,http20-connections-current-total,connections-established-per-second]'
-}
 
-http-failures() {
+monitor-http() {
     if ! check-process-access; then
-        echo "❌ Cannot see .NET processes from other containers"
-        echo "   Process namespace sharing is not enabled for this pod"
+        echo "Cannot see .NET processes from other containers"
+        echo "Process namespace sharing is not enabled for this pod"
         return 1
     fi
     
@@ -340,38 +307,16 @@ http-failures() {
         return 1
     fi
     echo "Monitoring HTTP request failures for: $pid ($1)"
-    dotnet-counters monitor -p $pid --counters 'System.Net.Http[requests-failed,requests-failed-rate,requests-aborted,requests-aborted-rate]'
+    dotnet-counters monitor -p $pid --counters 'System.Net.Http,System.Net.Security,System.Net.NameResolution,System.Net.Sockets'
 }
 
-http-queue-performance() {
-    if ! check-process-access; then
-        echo "❌ Cannot see .NET processes from other containers"
-        echo "   Process namespace sharing is not enabled for this pod"
-        return 1
-    fi
-    
-    if [ -z "$1" ]; then
-        echo "Usage: http-queue-performance [process-name-pattern]"
-        echo "Example: http-queue-performance MyApp"
-        return 1
-    fi
-    local pid=$(get-dotnet-pid "$1")
-    if [ -z "$pid" ]; then
-        echo "No .NET process found matching: $1"
-        echo "Available .NET processes:"
-        dotnet-counters ps 2>/dev/null
-        return 1
-    fi
-    echo "Monitoring HTTP request queue performance for: $pid ($1)"
-    dotnet-counters monitor -p $pid --counters 'System.Net.Http[http11-requests-queue-duration,http20-requests-queue-duration,current-requests]'
-}
 
 # Comprehensive network monitoring - all HTTP, Kestrel, and networking counters
 monitor-network-full() {
     if ! check-process-access; then
-        echo "❌ Cannot see .NET processes from other containers"
-        echo "   Process namespace sharing is not enabled for this pod"
-        echo "   Use volume-based debugging: check /tmp for network performance logs"
+        echo "Cannot see .NET processes from other containers"
+        echo "Process namespace sharing is not enabled for this pod"
+        echo "Use volume-based debugging: check /tmp for network performance logs"
         return 1
     fi
     
@@ -396,102 +341,16 @@ monitor-network-full() {
     fi
     
     local refresh_interval=${2:-3}
-    echo "🌐 Comprehensive Network Monitoring for: $pid ($1)"
-    echo "📊 Refresh interval: ${refresh_interval}s"
-    echo "🔄 Press Ctrl+C to stop"
+    echo "Comprehensive Network Monitoring for: $pid ($1)"
+    echo "Refresh interval: ${refresh_interval}s"
+    echo "Press Ctrl+C to stop"
     echo ""
-    
-    dotnet-counters monitor -p $pid --refresh-interval $refresh_interval --counters \
-        'System.Net.Http[requests-started,requests-started-rate,requests-failed,requests-failed-rate,requests-aborted,requests-aborted-rate,current-requests,current-connections,connections-established-per-second,http11-connections-current-total,http20-connections-current-total,http11-requests-queue-duration,http20-requests-queue-duration]' \
-        'Microsoft.AspNetCore.Hosting[requests-per-second,total-requests,current-requests,failed-requests]' \
-        'Microsoft.AspNetCore.Server.Kestrel[connection-queue-length,request-queue-length,total-connections,current-connections,connection-rate,total-tls-handshakes,current-tls-handshakes,failed-tls-handshakes,current-upgraded-requests,total-upgraded-requests,request-rate,bad-requests,current-bad-requests]' \
-        'System.Net.Sockets[outgoing-connections-established,incoming-connections-established]' \
-        'System.Net.NameResolution[dns-lookups-requested,dns-lookups-duration]'
+
+    dotnet-counters monitor -p $pid --refresh-interval $refresh_interval \
+        --counters 'Microsoft.AspNetCore.Server.Kestrel,Microsoft.AspNetCore.Hosting,Microsoft.AspNetCore.Routing,System.Net.Sockets,System.Net.NameResolution,System.Net.Security,System.Net.Http'
+
 }
 
-# Quick network overview - essential counters only
-monitor-network-quick() {
-    if ! check-process-access; then
-        echo "❌ Cannot see .NET processes from other containers"
-        echo "   Process namespace sharing is not enabled for this pod"
-        return 1
-    fi
-    
-    if [ -z "$1" ]; then
-        echo "Usage: monitor-network-quick [process-name-pattern]"
-        echo "Example: monitor-network-quick MyApp"
-        return 1
-    fi
-    
-    local pid=$(get-dotnet-pid "$1")
-    if [ -z "$pid" ]; then
-        echo "No .NET process found matching: $1"
-        return 1
-    fi
-    
-    echo "⚡ Quick Network Overview for: $pid ($1)"
-    echo ""
-    
-    dotnet-counters monitor -p $pid --refresh-interval 2 --counters \
-        'System.Net.Http[requests-started-rate,requests-failed-rate,current-connections]' \
-        'Microsoft.AspNetCore.Hosting[requests-per-second,current-requests,failed-requests]' \
-        'Microsoft.AspNetCore.Server.Kestrel[current-connections,request-rate,bad-requests]'
-}
-
-# HTTP Client focus - detailed HTTP client monitoring
-monitor-http-detailed() {
-    if ! check-process-access; then
-        echo "❌ Cannot see .NET processes from other containers"
-        echo "   Process namespace sharing is not enabled for this pod"
-        return 1
-    fi
-    
-    if [ -z "$1" ]; then
-        echo "Usage: monitor-http-detailed [process-name-pattern]"
-        echo "Example: monitor-http-detailed MyApp"
-        return 1
-    fi
-    
-    local pid=$(get-dotnet-pid "$1")
-    if [ -z "$pid" ]; then
-        echo "No .NET process found matching: $1"
-        return 1
-    fi
-    
-    echo "🌐 Detailed HTTP Client Monitoring for: $pid ($1)"
-    echo ""
-    
-    dotnet-counters monitor -p $pid --refresh-interval 2 --counters \
-        'System.Net.Http[requests-started,requests-started-rate,requests-failed,requests-failed-rate,requests-aborted,requests-aborted-rate,current-requests,current-connections,connections-established-per-second,http11-connections-current-total,http20-connections-current-total,http11-requests-queue-duration,http20-requests-queue-duration,dns-lookups-duration]'
-}
-
-# Kestrel server focus - detailed server monitoring  
-monitor-kestrel-detailed() {
-    if ! check-process-access; then
-        echo "❌ Cannot see .NET processes from other containers"
-        echo "   Process namespace sharing is not enabled for this pod"
-        return 1
-    fi
-    
-    if [ -z "$1" ]; then
-        echo "Usage: monitor-kestrel-detailed [process-name-pattern]"
-        echo "Example: monitor-kestrel-detailed MyApp"
-        return 1
-    fi
-    
-    local pid=$(get-dotnet-pid "$1")
-    if [ -z "$pid" ]; then
-        echo "No .NET process found matching: $1"
-        return 1
-    fi
-    
-    echo "🖥️  Detailed Kestrel Server Monitoring for: $pid ($1)"
-    echo ""
-    
-    dotnet-counters monitor -p $pid --refresh-interval 2 --counters \
-        'Microsoft.AspNetCore.Server.Kestrel[connection-queue-length,request-queue-length,total-connections,current-connections,connection-rate,total-tls-handshakes,current-tls-handshakes,failed-tls-handshakes,current-upgraded-requests,total-upgraded-requests,request-rate,bad-requests,current-bad-requests]' \
-        'Microsoft.AspNetCore.Hosting[requests-per-second,total-requests,current-requests,failed-requests]'
-}
 
 
 # Colorise the top Tabs of Iterm2 with the same color as background

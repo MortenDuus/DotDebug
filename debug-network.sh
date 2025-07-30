@@ -6,29 +6,29 @@
 TARGET_HOST=${1:-google.com}
 TARGET_PORT=${2:-443}
 
-echo "🌐 Network Connectivity Debug"
+echo "Network Connectivity Debug"
 echo "============================="
 echo "Target: $TARGET_HOST:$TARGET_PORT"
 echo "Timestamp: $(date)"
 echo ""
 
-echo "🔍 Basic Connectivity Tests:"
+echo "Basic Connectivity Tests:"
 echo "----------------------------"
 
 # Ping test
-echo "📡 Ping test to $TARGET_HOST:"
+echo "Ping test to $TARGET_HOST:"
 ping -c 4 $TARGET_HOST
 echo ""
 
 # DNS resolution
-echo "🔍 DNS Resolution:"
+echo "DNS Resolution:"
 nslookup $TARGET_HOST
 echo ""
 dig $TARGET_HOST
 echo ""
 
 # Port connectivity
-echo "🔌 Port Connectivity Test:"
+echo "Port Connectivity Test:"
 if command -v telnet &> /dev/null; then
     timeout 5 telnet $TARGET_HOST $TARGET_PORT
 else
@@ -37,17 +37,17 @@ fi
 echo ""
 
 # Traceroute
-echo "🛣️  Network Path (traceroute):"
+echo "Network Path (traceroute):"
 traceroute $TARGET_HOST
 echo ""
 
 # MTR for better network diagnostics
-echo "📊 MTR Network Report:"
+echo "MTR Network Report:"
 mtr --report --report-cycles 10 $TARGET_HOST
 echo ""
 
 # Check local networking
-echo "🏠 Local Network Configuration:"
+echo "Local Network Configuration:"
 echo "------------------------------"
 echo "Routing table:"
 ip route show
@@ -65,4 +65,4 @@ echo "Network statistics:"
 ss -tuln
 echo ""
 
-echo "✅ Network debugging complete"
+echo "Network debugging complete"

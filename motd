@@ -1,83 +1,31 @@
-🔍 Sidecar Debug Container - A🔒 Secure .NET Debugging (Volume-Based):
-   • tmp-files                       - List shared diagnostic files
-   • analyze-latest-dump             - Analyze newest .NET dump in /tmp
-   • watch-diagnostic-files          - Monitor log files in real-time
-   • show-diagnostic-summary         - Overview of all diagnostic data
-   • convert-traces                  - Convert .nettrace to speedscope
+Debug Sidecar Container
 
-🔓 Process-Based .NET Debugging (If Process Sharing Enabled):
-   • dotnet-counters ps              - List .NET processes (most reliable)
-   • dotnet-procs / dotnet-ps        - Show .NET processes across containers
-   • monitor-dotnet [app-name]       - Live performance monitoring
-   • dump-dotnet [app-name]          - Create memory dump to /tmp
-   • trace-dotnet [app-name] [secs]  - Execution tracing to /tmp
+.NET Debugging (Volume-based via diagnostic socket):
+  dotnet-counters ps               - List .NET processes via diagnostic socket
+  monitor-dotnet [app]             - Live performance monitoring  
+  dump-dotnet [app]                - Create memory dump
+  trace-dotnet [app] [secs]        - Execution tracing
+  tmp-files                        - List diagnostic files in /tmp
 
-🌐 Comprehensive Network Monitoring:
-   • netmon [app-name]               - ALL network counters (HTTP+Kestrel+ASP.NET)
-   • netmon-quick [app-name]         - Essential network counters only
-   • httpmon [app-name]              - Detailed HTTP client monitoring
-   • kestrelmon [app-name]           - Detailed Kestrel server monitoring
-   • http-monitor [app-name]         - Basic HTTP client performance
-   • http-connections [app-name]     - Monitor HTTP connection pools
-   • http-failures [app-name]        - Monitor HTTP request failures
-Version: 0.5 (Secure + Enhanced Modes)
-══════════════════════════════════════════════════════════
+.NET Debugging (Process namespace sharing):
+  dotnet-procs                     - Show .NET processes directly
+  monitor-dotnet [app]             - Live performance monitoring
+  dump-dotnet [app]                - Create memory dump  
+  trace-dotnet [app] [secs]        - Execution tracing
 
-🛠️  Network Debugging Tools:
-   • tcpdump, nmap, mtr, iperf3, traceroute
-   • netcat, socat, telnet, dig, nslookup
-   • netstat, ss, lsof, arp
+Network Monitoring:
+  netmon [app]                     - All network counters
+  httpmon [app]                    - HTTP client monitoring
 
-🔧 Application Debugging:
-   • dotnet-dump, dotnet-trace analysis tools
-   • Artillery.io for load testing
-   • YAML/JSON editing and validation tools
-   • Secure volume-based diagnostic file analysis
+Core Commands:
+  debug-sidecar [host] [port]      - Full pod debug info
+  debug-network [host] [port]      - Network connectivity tests
+  loadtest-quick [url]             - Quick load test
 
-📋 Quick Commands:
-   • debug-sidecar [host] [port]     - Full pod debug info
-   • debug-network [host] [port]     - Network connectivity tests
-   • envoy-stats                     - Istio proxy metrics (if available)
-   • envoy-clusters                  - Istio proxy clusters
-   • test-port [host] [port]         - Quick port connectivity test
-   • test-http [url]                 - HTTP endpoint test
-   • capture-traffic [host]          - Capture network packets
+Tools: tcpdump, nmap, mtr, netstat, ss, lsof, curl, micro
+Aliases: listen, ports, conns, myip, netprocs
 
-🔗 Useful Aliases:
-   • listen = netstat -tlnp          • ports = ss -tulpn
-   • conns = ss -tuln               • myip = hostname -i
-   • netprocs = lsof -i             • listening = listening ports only
-   • tmp-files = list diagnostic files • motd = show this message
-
-� Secure .NET Debugging (Volume-Based):
-   • tmp-files                       - List shared diagnostic files
-   • analyze-latest-dump             - Analyze newest .NET dump in /tmp
-   • watch-diagnostic-files          - Monitor log files in real-time
-   • show-diagnostic-summary         - Overview of all diagnostic data
-   • convert-traces                  - Convert .nettrace to speedscope
-
-🎯 Load Testing Functions:
-   • loadtest [url] [users] [duration] - Create and run Artillery load test
-   • loadtest-quick [url]             - Quick 10 user load test
-   • create-yaml-template [file]      - Create YAML config template
-   • artillery run /root/artillery-loadtest.yaml - Run pre-configured load test
-
-🛠️  File Editing & Validation:
-   • micro /root/artillery-loadtest.yaml - Edit the included load test template
-   • micro [file]                    - Advanced terminal editor with syntax highlighting
-   • yaml-check [file]               - Validate YAML syntax
-   • json-pretty [file]              - Pretty print JSON files
-
-💡 Sidecar Debugging Examples:
-   • debug-sidecar api-service 8080
-   • capture-traffic 10.244.1.5
-   • test-port my-service.default.svc.cluster.local 80
-   • dotnet-counters ps              - List .NET processes (recommended)
-   • strace -p $(pgrep MyApp) -f -e network
-
-📊 Istio Service Mesh:
-   • Check for Envoy proxy on ports 15000-15090
-   • Access Envoy admin interface via localhost:15000
-   • Monitor proxy stats and cluster health
-
-══════════════════════════════════════════════════════════
+Examples:
+  debug-sidecar api-service 8080
+  test-port my-service 80
+  dotnet-counters ps
