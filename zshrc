@@ -186,19 +186,31 @@ monitor-dotnet() {
         return 1
     fi
     
+    local pid
+    local app_name="$1"
+    
     if [ -z "$1" ]; then
-        echo "Usage: monitor-dotnet [process-name-pattern]"
-        echo "Example: monitor-dotnet MyApp"
-        return 1
+        # Auto-detect first .NET process
+        pid=$(dotnet-counters ps 2>/dev/null | tail -n +2 | head -1 | awk '{print $1}')
+        app_name=$(dotnet-counters ps 2>/dev/null | tail -n +2 | head -1 | awk '{for(i=2;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/[[:space:]]*$//')
+        if [ -z "$pid" ]; then
+            echo "No .NET processes found"
+            echo "Available .NET processes:"
+            dotnet-counters ps 2>/dev/null || ps aux | grep -i dotnet | grep -v grep
+            return 1
+        fi
+        echo "Auto-detected .NET process: $app_name (PID: $pid)"
+    else
+        pid=$(get-dotnet-pid "$1")
+        if [ -z "$pid" ]; then
+            echo "No .NET process found matching: $1"
+            echo "Available .NET processes:"
+            dotnet-counters ps 2>/dev/null || ps aux | grep -i dotnet | grep -v grep
+            return 1
+        fi
     fi
-    local pid=$(get-dotnet-pid "$1")
-    if [ -z "$pid" ]; then
-        echo "No .NET process found matching: $1"
-        echo "Available .NET processes:"
-        dotnet-counters ps 2>/dev/null || ps aux | grep -i dotnet | grep -v grep
-        return 1
-    fi
-    echo "Monitoring .NET process: $pid ($1)"
+    
+    echo "Monitoring .NET process: $pid ($app_name)"
     dotnet-counters monitor -p $pid
 }
 
@@ -211,21 +223,33 @@ dump-dotnet() {
         return 1
     fi
     
+    local pid
+    local app_name="$1"
+    
     if [ -z "$1" ]; then
-        echo "Usage: dump-dotnet [process-name-pattern]"
-        echo "Example: dump-dotnet MyApp"
-        return 1
+        # Auto-detect first .NET process
+        pid=$(dotnet-counters ps 2>/dev/null | tail -n +2 | head -1 | awk '{print $1}')
+        app_name=$(dotnet-counters ps 2>/dev/null | tail -n +2 | head -1 | awk '{for(i=2;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/[[:space:]]*$//')
+        if [ -z "$pid" ]; then
+            echo "No .NET processes found"
+            echo "Available .NET processes:"
+            dotnet-counters ps 2>/dev/null || ps aux | grep -i dotnet | grep -v grep
+            return 1
+        fi
+        echo "Auto-detected .NET process: $app_name (PID: $pid)"
+    else
+        pid=$(get-dotnet-pid "$1")
+        if [ -z "$pid" ]; then
+            echo "No .NET process found matching: $1"
+            echo "Available .NET processes:"
+            dotnet-counters ps 2>/dev/null || ps aux | grep -i dotnet | grep -v grep
+            return 1
+        fi
     fi
-    local pid=$(get-dotnet-pid "$1")
-    if [ -z "$pid" ]; then
-        echo "No .NET process found matching: $1"
-        echo "Available .NET processes:"
-        dotnet-counters ps 2>/dev/null || ps aux | grep -i dotnet | grep -v grep
-        return 1
-    fi
+    
     local timestamp=$(date +%Y%m%d_%H%M%S)
-    local filename="/tmp/dotnet-dump-${1}-${timestamp}.dmp"
-    echo "Creating dump of .NET process: $pid ($1)"
+    local filename="/tmp/dotnet-dump-${app_name}-${timestamp}.dmp"
+    echo "Creating dump of .NET process: $pid ($app_name)"
     echo "Output file: $filename"
     dotnet-dump collect -p $pid -o "$filename"
 }
@@ -239,22 +263,35 @@ trace-dotnet() {
         return 1
     fi
     
-    if [ -z "$1" ]; then
-        echo "Usage: trace-dotnet [process-name-pattern] [duration-seconds]"
-        echo "Example: trace-dotnet MyApp 30"
-        return 1
-    fi
-    local pid=$(get-dotnet-pid "$1")
-    if [ -z "$pid" ]; then
-        echo "No .NET process found matching: $1"
-        echo "Available .NET processes:"
-        dotnet-counters ps 2>/dev/null || ps aux | grep -i dotnet | grep -v grep
-        return 1
-    fi
+    local pid
+    local app_name="$1"
     local duration=${2:-10}
+    
+    if [ -z "$1" ]; then
+        # Auto-detect first .NET process
+        pid=$(dotnet-counters ps 2>/dev/null | tail -n +2 | head -1 | awk '{print $1}')
+        app_name=$(dotnet-counters ps 2>/dev/null | tail -n +2 | head -1 | awk '{for(i=2;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/[[:space:]]*$//')
+        duration=${1:-10}  # If no app name, first arg might be duration
+        if [ -z "$pid" ]; then
+            echo "No .NET processes found"
+            echo "Available .NET processes:"
+            dotnet-counters ps 2>/dev/null || ps aux | grep -i dotnet | grep -v grep
+            return 1
+        fi
+        echo "Auto-detected .NET process: $app_name (PID: $pid)"
+    else
+        pid=$(get-dotnet-pid "$1")
+        if [ -z "$pid" ]; then
+            echo "No .NET process found matching: $1"
+            echo "Available .NET processes:"
+            dotnet-counters ps 2>/dev/null || ps aux | grep -i dotnet | grep -v grep
+            return 1
+        fi
+    fi
+    
     local timestamp=$(date +%Y%m%d_%H%M%S)
-    local filename="/tmp/dotnet-trace-${1}-${timestamp}.nettrace"
-    echo "Tracing .NET process: $pid ($1) for ${duration}s"
+    local filename="/tmp/dotnet-trace-${app_name}-${timestamp}.nettrace"
+    echo "Tracing .NET process: $pid ($app_name) for ${duration}s"
     echo "Output file: $filename"
     timeout $duration dotnet-trace collect -p $pid -o "$filename"
 }
@@ -268,19 +305,31 @@ http-monitor() {
         return 1
     fi
     
+    local pid
+    local app_name="$1"
+    
     if [ -z "$1" ]; then
-        echo "Usage: http-monitor [process-name-pattern]"
-        echo "Example: http-monitor MyApp"
-        return 1
+        # Auto-detect first .NET process
+        pid=$(dotnet-counters ps 2>/dev/null | tail -n +2 | head -1 | awk '{print $1}')
+        app_name=$(dotnet-counters ps 2>/dev/null | tail -n +2 | head -1 | awk '{for(i=2;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/[[:space:]]*$//')
+        if [ -z "$pid" ]; then
+            echo "No .NET processes found"
+            echo "Available .NET processes:"
+            dotnet-counters ps 2>/dev/null
+            return 1
+        fi
+        echo "Auto-detected .NET process: $app_name (PID: $pid)"
+    else
+        pid=$(get-dotnet-pid "$1")
+        if [ -z "$pid" ]; then
+            echo "No .NET process found matching: $1"
+            echo "Available .NET processes:"
+            dotnet-counters ps 2>/dev/null
+            return 1
+        fi
     fi
-    local pid=$(get-dotnet-pid "$1")
-    if [ -z "$pid" ]; then
-        echo "No .NET process found matching: $1"
-        echo "Available .NET processes:"
-        dotnet-counters ps 2>/dev/null
-        return 1
-    fi
-    echo "Monitoring HTTP client performance for: $pid ($1)"
+    
+    echo "Monitoring HTTP client performance for: $pid ($app_name)"
     dotnet-counters monitor -p $pid --counters 'System.Net.Http[requests-started,requests-failed,current-connections,connections-established-per-second]'
 }
 
@@ -296,19 +345,31 @@ monitor-http() {
         return 1
     fi
     
+    local pid
+    local app_name="$1"
+    
     if [ -z "$1" ]; then
-        echo "Usage: http-failures [process-name-pattern]"
-        echo "Example: http-failures MyApp"
-        return 1
+        # Auto-detect first .NET process
+        pid=$(dotnet-counters ps 2>/dev/null | tail -n +2 | head -1 | awk '{print $1}')
+        app_name=$(dotnet-counters ps 2>/dev/null | tail -n +2 | head -1 | awk '{for(i=2;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/[[:space:]]*$//')
+        if [ -z "$pid" ]; then
+            echo "No .NET processes found"
+            echo "Available .NET processes:"
+            dotnet-counters ps 2>/dev/null
+            return 1
+        fi
+        echo "Auto-detected .NET process: $app_name (PID: $pid)"
+    else
+        pid=$(get-dotnet-pid "$1")
+        if [ -z "$pid" ]; then
+            echo "No .NET process found matching: $1"
+            echo "Available .NET processes:"
+            dotnet-counters ps 2>/dev/null
+            return 1
+        fi
     fi
-    local pid=$(get-dotnet-pid "$1")
-    if [ -z "$pid" ]; then
-        echo "No .NET process found matching: $1"
-        echo "Available .NET processes:"
-        dotnet-counters ps 2>/dev/null
-        return 1
-    fi
-    echo "Monitoring HTTP request failures for: $pid ($1)"
+    
+    echo "Monitoring HTTP request performance for: $pid ($app_name)"
     dotnet-counters monitor -p $pid --counters 'System.Net.Http,System.Net.Security,System.Net.NameResolution,System.Net.Sockets'
 }
 
@@ -322,35 +383,39 @@ monitor-network-full() {
         return 1
     fi
     
-    if [ -z "$1" ]; then
-        echo "Usage: monitor-network-full [process-name-pattern] [refresh-interval]"
-        echo "Example: monitor-network-full MyApp 2"
-        echo ""
-        echo "This monitors ALL network-related counters:"
-        echo "  • HTTP Client (requests, connections, failures, timing)"
-        echo "  • Kestrel Server (connections, requests, errors)"
-        echo "  • ASP.NET Core (requests, responses, routing)"
-        echo "  • Socket connections and networking"
-        return 1
-    fi
-    
-    local pid=$(get-dotnet-pid "$1")
-    if [ -z "$pid" ]; then
-        echo "No .NET process found matching: $1"
-        echo "Available .NET processes:"
-        dotnet-counters ps 2>/dev/null
-        return 1
-    fi
-    
+    local pid
+    local app_name="$1"
     local refresh_interval=${2:-3}
-    echo "Comprehensive Network Monitoring for: $pid ($1)"
+    
+    if [ -z "$1" ]; then
+        # Auto-detect first .NET process
+        pid=$(dotnet-counters ps 2>/dev/null | tail -n +2 | head -1 | awk '{print $1}')
+        app_name=$(dotnet-counters ps 2>/dev/null | tail -n +2 | head -1 | awk '{for(i=2;i<=NF;i++) printf "%s ", $i; print ""}' | sed 's/[[:space:]]*$//')
+        refresh_interval=${1:-3}  # If no app name, first arg might be refresh interval
+        if [ -z "$pid" ]; then
+            echo "No .NET processes found"
+            echo "Available .NET processes:"
+            dotnet-counters ps 2>/dev/null
+            return 1
+        fi
+        echo "Auto-detected .NET process: $app_name (PID: $pid)"
+    else
+        pid=$(get-dotnet-pid "$1")
+        if [ -z "$pid" ]; then
+            echo "No .NET process found matching: $1"
+            echo "Available .NET processes:"
+            dotnet-counters ps 2>/dev/null
+            return 1
+        fi
+    fi
+    
+    echo "Comprehensive Network Monitoring for: $pid ($app_name)"
     echo "Refresh interval: ${refresh_interval}s"
     echo "Press Ctrl+C to stop"
     echo ""
 
     dotnet-counters monitor -p $pid --refresh-interval $refresh_interval \
         --counters 'Microsoft.AspNetCore.Server.Kestrel,Microsoft.AspNetCore.Hosting,Microsoft.AspNetCore.Routing,System.Net.Sockets,System.Net.NameResolution,System.Net.Security,System.Net.Http'
-
 }
 
 
