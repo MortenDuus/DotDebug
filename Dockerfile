@@ -51,8 +51,10 @@ RUN dotnet tool install -g dotnet-counters && \
     dotnet tool install -g dotnet-trace
 
 # Install Node.js and performance testing tools
-RUN apt update -y && apt install -y nodejs npm && \
-    npm install -g artillery@latest && \
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash
+RUN apt-get install --yes nodejs
+
+RUN npm install -g artillery@latest && \
     npm install -g yaml-cli && \
     npm install -g prettyjson
 
@@ -65,6 +67,7 @@ RUN apt-get clean && \
 USER root
 WORKDIR /root
 ENV HOSTNAME=sidecar-debug
+ENV NODE_ENV=development
 
 # Create symbolic links for .NET tools
 RUN ln -s /root/.dotnet/dotnet /usr/local/bin && \
